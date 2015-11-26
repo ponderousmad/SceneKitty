@@ -9,8 +9,13 @@
 import UIKit
 import QuartzCore
 import SceneKit
+import GLKit
+import CoreMotion
 
 class GameViewController: UIViewController {
+    
+    let motionManager = CMMotionManager()
+    let unworldNode = SCNNode()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -18,13 +23,18 @@ class GameViewController: UIViewController {
         // create a new scene
         let scene = SCNScene(named: "art.scnassets/Kitty.dae")!
         
+        scene.rootNode.addChildNode(unworldNode)
+
+        
         // create and add a camera to the scene
         let cameraNode = SCNNode()
         cameraNode.camera = SCNCamera()
-        scene.rootNode.addChildNode(cameraNode)
+        
+        unworldNode.addChildNode(cameraNode)
         
         // place the camera
-        cameraNode.position = SCNVector3(x: 0, y: 0, z: 15)
+        cameraNode.position = SCNVector3(x: 0, y: 1, z: 15)
+        
         
         // create and add a light to the scene
         let lightNode = SCNNode()
@@ -40,11 +50,18 @@ class GameViewController: UIViewController {
         ambientLightNode.light!.color = UIColor.darkGrayColor()
         scene.rootNode.addChildNode(ambientLightNode)
         
-        // retrieve the ship node
-        let ship = scene.rootNode.childNodeWithName("kitty", recursively: true)!
+        let groundNode = SCNNode()
+        groundNode.geometry = SCNPlane(width: 200, height: 200)
+        groundNode.eulerAngles = SCNVector3(-M_PI_2,0,0)
+        scene.rootNode.addChildNode(groundNode)
+        
+        // retrieve the cat node
+        let cat = scene.rootNode.childNodeWithName("kitty", recursively: true)!
         
         // animate the 3d object
-        ship.runAction(SCNAction.repeatActionForever(SCNAction.rotateByX(0, y: 2, z: 0, duration: 1)))
+        //cat.runAction(SCNAction.repeatActionForever(SCNAction.rotateByX(0, y: 2, z: 0, duration: 1)))
+        
+        debugHeirarchy(cat)
         
         // retrieve the SCNView
         let scnView = self.view as! SCNView
@@ -53,7 +70,7 @@ class GameViewController: UIViewController {
         scnView.scene = scene
         
         // allows the user to manipulate the camera
-        scnView.allowsCameraControl = true
+        //scnView.allowsCameraControl = true
         
         // show statistics such as fps and timing information
         scnView.showsStatistics = true
@@ -64,6 +81,27 @@ class GameViewController: UIViewController {
         // add a tap gesture recognizer
         let tapGesture = UITapGestureRecognizer(target: self, action: "handleTap:")
         scnView.addGestureRecognizer(tapGesture)
+        
+        motionManager.startDeviceMotionUpdatesUsingReferenceFrame(
+            CMAttitudeReferenceFrame.XMagneticNorthZVertical,
+            toQueue: NSOperationQueue.currentQueue()!,
+            withHandler:handleMotion
+        )
+    }
+    
+    func handleMotion(motion: CMDeviceMotion?, error: NSError?)
+    {
+        if let attitude = motion?.attitude {
+            let orientation = GLKQuaternionMake(
+                Float(attitude.quaternion.x),
+                Float(attitude.quaternion.y),
+                Float(attitude.quaternion.z),
+                Float(attitude.quaternion.w)
+            )
+            let yUp = GLKQuaternionMakeWithAngleAndAxis(-Float(M_PI_2), 1, 0, 0)
+            let sum = GLKQuaternionMultiply(yUp, orientation)
+            unworldNode.orientation = SCNQuaternion(sum.x, sum.y, sum.z, sum.w)
+        }
     }
     
     func handleTap(gestureRecognize: UIGestureRecognizer) {
@@ -98,6 +136,14 @@ class GameViewController: UIViewController {
             material.emission.contents = UIColor.redColor()
             
             SCNTransaction.commit()
+        }
+    }
+    
+    func debugHeirarchy(node: SCNNode, indent: String = "")
+    {
+        print(indent + (node.name ?? "unnamed"))
+        for child in node.childNodes {
+            debugHeirarchy(child, indent: indent + "  ")
         }
     }
     
