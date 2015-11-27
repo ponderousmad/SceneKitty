@@ -16,6 +16,10 @@ class GameViewController: UIViewController {
     
     let motionManager = CMMotionManager()
     let unworldNode = SCNNode()
+    let xAccel = SCNNode()
+    let yAccel = SCNNode()
+    let zAccel = SCNNode()
+    let gravity = SCNNode()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -55,6 +59,10 @@ class GameViewController: UIViewController {
         groundNode.eulerAngles = SCNVector3(-M_PI_2,0,0)
         scene.rootNode.addChildNode(groundNode)
         
+        constructArrow(xAccel, scene: scene, direction: SCNVector3(1,0,0))
+        constructArrow(yAccel, scene: scene, direction: SCNVector3(0,1,0))
+        constructArrow(zAccel, scene: scene, direction: SCNVector3(0,0,1))
+        
         // retrieve the cat node
         let cat = scene.rootNode.childNodeWithName("kitty", recursively: true)!
         
@@ -89,6 +97,25 @@ class GameViewController: UIViewController {
         )
     }
     
+    func constructArrow(node: SCNNode, scene: SCNScene, direction: SCNVector3) {
+        let color = UIColor(red: CGFloat(direction.x), green: CGFloat(direction.y), blue: CGFloat(direction.z), alpha: 1)
+        scene.rootNode.addChildNode(node)
+        
+        let point = SCNNode()
+        point.geometry = SCNCone(topRadius: 0,bottomRadius: 0.2,height: 0.4)
+        point.eulerAngles = SCNVector3(direction.z > 0 ? M_PI_2 : 0, 0, direction.x > 0 ? -M_PI_2 : 0)
+        point.position = direction
+        point.geometry?.firstMaterial?.diffuse.contents = color
+        node.addChildNode(point)
+        
+        let line = SCNNode()
+        line.geometry = SCNCylinder(radius: 0.1,height: 1)
+        line.eulerAngles = point.eulerAngles
+        line.position = SCNVector3(direction.x * 0.5, direction.y * 0.5, direction.z * 0.5)
+        line.geometry?.firstMaterial?.diffuse.contents = color
+        node.addChildNode(line)
+    }
+    
     func handleMotion(motion: CMDeviceMotion?, error: NSError?)
     {
         if let attitude = motion?.attitude {
@@ -101,6 +128,11 @@ class GameViewController: UIViewController {
             let yUp = GLKQuaternionMakeWithAngleAndAxis(-Float(M_PI_2), 1, 0, 0)
             let sum = GLKQuaternionMultiply(yUp, orientation)
             unworldNode.orientation = SCNQuaternion(sum.x, sum.y, sum.z, sum.w)
+        }
+        if let userAccel = motion?.userAcceleration {
+            xAccel.scale = SCNVector3(userAccel.x, 1, 1)
+            yAccel.scale = SCNVector3(1, userAccel.y, 1)
+            zAccel.scale = SCNVector3(1, 1, userAccel.z)
         }
     }
     
