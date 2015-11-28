@@ -19,7 +19,9 @@ class GameViewController: UIViewController {
     let xAccel = SCNNode()
     let yAccel = SCNNode()
     let zAccel = SCNNode()
+    let accels = SCNNode()
     let gravity = SCNNode()
+    let accelsTarget = SCNNode()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,17 +30,20 @@ class GameViewController: UIViewController {
         let scene = SCNScene(named: "art.scnassets/Kitty.dae")!
         
         scene.rootNode.addChildNode(unworldNode)
-
+        scene.rootNode.addChildNode(accels)
         
         // create and add a camera to the scene
         let cameraNode = SCNNode()
         cameraNode.camera = SCNCamera()
         
         unworldNode.addChildNode(cameraNode)
+        unworldNode.position = SCNVector3(x: 0, y: 5, z: 0)
         
         // place the camera
-        cameraNode.position = SCNVector3(x: 0, y: 1, z: 15)
+        cameraNode.position = SCNVector3(x: 0, y: 0, z: 0)
         
+        cameraNode.addChildNode(accelsTarget)
+        accelsTarget.position = SCNVector3(x: 0, y: 0, z: -3)
         
         // create and add a light to the scene
         let lightNode = SCNNode()
@@ -53,23 +58,23 @@ class GameViewController: UIViewController {
         ambientLightNode.light!.type = SCNLightTypeAmbient
         ambientLightNode.light!.color = UIColor.darkGrayColor()
         scene.rootNode.addChildNode(ambientLightNode)
-        
-        let groundNode = SCNNode()
-        groundNode.geometry = SCNPlane(width: 200, height: 200)
-        groundNode.eulerAngles = SCNVector3(-M_PI_2,0,0)
-        scene.rootNode.addChildNode(groundNode)
-        
-        constructArrow(xAccel, scene: scene, direction: SCNVector3(1,0,0))
-        constructArrow(yAccel, scene: scene, direction: SCNVector3(0,1,0))
-        constructArrow(zAccel, scene: scene, direction: SCNVector3(0,0,1))
+             
+        constructArrow(xAccel, direction: SCNVector3(1,0,0))
+        constructArrow(yAccel, direction: SCNVector3(0,1,0))
+        constructArrow(zAccel, direction: SCNVector3(0,0,1))
         
         // retrieve the cat node
         let cat = scene.rootNode.childNodeWithName("kitty", recursively: true)!
+        cat.position = SCNVector3(x: 5, y: 0, z: 5)
         
         // animate the 3d object
         //cat.runAction(SCNAction.repeatActionForever(SCNAction.rotateByX(0, y: 2, z: 0, duration: 1)))
         
         debugHeirarchy(cat)
+        
+        let compassScene = SCNScene(named: "art.scnassets/Compass.scn")!
+        let compass = compassScene.rootNode.childNodeWithName("compass", recursively: true)!
+        scene.rootNode.addChildNode(compass)
         
         // retrieve the SCNView
         let scnView = self.view as! SCNView
@@ -97,9 +102,9 @@ class GameViewController: UIViewController {
         )
     }
     
-    func constructArrow(node: SCNNode, scene: SCNScene, direction: SCNVector3) {
+    func constructArrow(node: SCNNode, direction: SCNVector3) {
         let color = UIColor(red: CGFloat(direction.x), green: CGFloat(direction.y), blue: CGFloat(direction.z), alpha: 1)
-        scene.rootNode.addChildNode(node)
+        accels.addChildNode(node)
         
         let point = SCNNode()
         point.geometry = SCNCone(topRadius: 0,bottomRadius: 0.2,height: 0.4)
@@ -126,13 +131,17 @@ class GameViewController: UIViewController {
                 Float(attitude.quaternion.w)
             )
             let yUp = GLKQuaternionMakeWithAngleAndAxis(-Float(M_PI_2), 1, 0, 0)
-            let sum = GLKQuaternionMultiply(yUp, orientation)
-            unworldNode.orientation = SCNQuaternion(sum.x, sum.y, sum.z, sum.w)
-        }
-        if let userAccel = motion?.userAcceleration {
-            xAccel.scale = SCNVector3(userAccel.x, 1, 1)
-            yAccel.scale = SCNVector3(1, userAccel.y, 1)
-            zAccel.scale = SCNVector3(1, 1, userAccel.z)
+            let product = GLKQuaternionMultiply(yUp, orientation)
+            unworldNode.orientation = SCNQuaternion(product.x, product.y, product.z, product.w)
+            
+            let userAccel = motion!.userAcceleration
+            let accel = GLKVector3Make(Float(userAccel.x), Float(userAccel.y), Float(userAccel.z))
+            let worldAccel = GLKQuaternionRotateVector3(product, accel)
+            xAccel.scale = SCNVector3(worldAccel.x, 1, 1)
+            yAccel.scale = SCNVector3(1, worldAccel.y, 1)
+            zAccel.scale = SCNVector3(1, 1, worldAccel.z)
+            
+            accels.position = accelsTarget.convertPosition(SCNVector3(0,0,0), toNode: unworldNode.parentNode!)
         }
     }
     
