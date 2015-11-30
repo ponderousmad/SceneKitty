@@ -108,17 +108,25 @@ class GameViewController: UIViewController {
         
         let point = SCNNode()
         point.geometry = SCNCone(topRadius: 0,bottomRadius: 0.2,height: 0.4)
-        point.eulerAngles = SCNVector3(direction.z > 0 ? M_PI_2 : 0, 0, direction.x > 0 ? -M_PI_2 : 0)
         point.position = direction
         point.geometry?.firstMaterial?.diffuse.contents = color
         node.addChildNode(point)
         
         let line = SCNNode()
         line.geometry = SCNCylinder(radius: 0.1,height: 1)
-        line.eulerAngles = point.eulerAngles
         line.position = SCNVector3(direction.x * 0.5, direction.y * 0.5, direction.z * 0.5)
         line.geometry?.firstMaterial?.diffuse.contents = color
         node.addChildNode(line)
+        
+        let up = GLKVector3Make(0, 1, 0)
+        let glDir = SCNVector3ToGLKVector3(direction)
+        let angle = acos(GLKVector3DotProduct(up, glDir))
+        if angle > 0 {
+            let cross = GLKVector3CrossProduct(up, glDir)
+            let orientation = GLKQuaternionMakeWithAngleAndVector3Axis(angle, cross)
+            point.orientation = SCNQuaternion(orientation.x, orientation.y, orientation.z, orientation.w)
+            line.orientation = SCNQuaternion(orientation.x, orientation.y, orientation.z, orientation.w)
+        }
     }
     
     func handleMotion(motion: CMDeviceMotion?, error: NSError?)
