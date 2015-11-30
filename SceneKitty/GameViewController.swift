@@ -121,12 +121,16 @@ class GameViewController: UIViewController {
         let up = GLKVector3Make(0, 1, 0)
         let glDir = SCNVector3ToGLKVector3(direction)
         let angle = acos(GLKVector3DotProduct(up, glDir))
-        if angle > 0 {
+        if angle == Float(M_PI) {
+            let orientation = GLKQuaternionMakeWithAngleAndVector3Axis(Float(M_PI), GLKVector3Make(1, 0, 0))
+            point.orientation = SCNQuaternion(orientation.x, orientation.y, orientation.z, orientation.w)
+        }
+        else if angle > 0 {
             let cross = GLKVector3CrossProduct(up, glDir)
             let orientation = GLKQuaternionMakeWithAngleAndVector3Axis(angle, cross)
             point.orientation = SCNQuaternion(orientation.x, orientation.y, orientation.z, orientation.w)
-            line.orientation = SCNQuaternion(orientation.x, orientation.y, orientation.z, orientation.w)
         }
+        line.orientation = point.orientation
     }
     
     func handleMotion(motion: CMDeviceMotion?, error: NSError?)
