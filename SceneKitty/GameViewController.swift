@@ -19,9 +19,16 @@ class GameViewController: UIViewController {
     let xAccel = SCNNode()
     let yAccel = SCNNode()
     let zAccel = SCNNode()
+    var accelTotal = SCNNode()
     let accels = SCNNode()
     let gravity = SCNNode()
     let accelsTarget = SCNNode()
+    
+    let velocities = SCNNode()
+    let path = SCNNode();
+    let position = SCNVector3(0,0,0)
+    var velocity = SCNVector3(0,0,0)
+    var lastTime = NSDate()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -58,10 +65,11 @@ class GameViewController: UIViewController {
         ambientLightNode.light!.type = SCNLightTypeAmbient
         ambientLightNode.light!.color = UIColor.darkGrayColor()
         scene.rootNode.addChildNode(ambientLightNode)
-             
-        constructArrow(xAccel, direction: SCNVector3(1,0,0))
-        constructArrow(yAccel, direction: SCNVector3(0,1,0))
-        constructArrow(zAccel, direction: SCNVector3(0,0,1))
+        
+        accels.addChildNode(accelTotal)
+        accels.addChildNode(constructArrow(xAccel, direction: SCNVector3(1,0,0)))
+        accels.addChildNode(constructArrow(yAccel, direction: SCNVector3(0,1,0)))
+        accels.addChildNode(constructArrow(zAccel, direction: SCNVector3(0,0,1)))
         
         // retrieve the cat node
         let cat = scene.rootNode.childNodeWithName("kitty", recursively: true)!
@@ -75,6 +83,9 @@ class GameViewController: UIViewController {
         let compassScene = SCNScene(named: "art.scnassets/Compass.scn")!
         let compass = compassScene.rootNode.childNodeWithName("compass", recursively: true)!
         scene.rootNode.addChildNode(compass)
+        
+        scene.rootNode.addChildNode(velocities)
+        scene.rootNode.addChildNode(path)
         
         // retrieve the SCNView
         let scnView = self.view as! SCNView
@@ -95,6 +106,7 @@ class GameViewController: UIViewController {
         let tapGesture = UITapGestureRecognizer(target: self, action: "handleTap:")
         scnView.addGestureRecognizer(tapGesture)
         
+        lastTime = NSDate()
         motionManager.startDeviceMotionUpdatesUsingReferenceFrame(
             CMAttitudeReferenceFrame.XMagneticNorthZVertical,
             toQueue: NSOperationQueue.currentQueue()!,
@@ -102,19 +114,23 @@ class GameViewController: UIViewController {
         )
     }
     
-    func constructArrow(node: SCNNode, direction: SCNVector3) {
+    func constructArrow(direction: SCNVector3) -> SCNNode
+    {
+        let node = SCNNode()
+        return constructArrow(node, direction: direction)    }
+    
+    func constructArrow(node: SCNNode, direction: SCNVector3) -> SCNNode {
         let color = UIColor(red: CGFloat(direction.x), green: CGFloat(direction.y), blue: CGFloat(direction.z), alpha: 1)
-        accels.addChildNode(node)
         
         let point = SCNNode()
         point.geometry = SCNCone(topRadius: 0,bottomRadius: 0.2,height: 0.4)
-        point.position = direction
+        point.position = SCNVector3(0, 1, 0)
         point.geometry?.firstMaterial?.diffuse.contents = color
         node.addChildNode(point)
         
         let line = SCNNode()
         line.geometry = SCNCylinder(radius: 0.1,height: 1)
-        line.position = SCNVector3(direction.x * 0.5, direction.y * 0.5, direction.z * 0.5)
+        line.position = SCNVector3(0, 0.5, 0)
         line.geometry?.firstMaterial?.diffuse.contents = color
         node.addChildNode(line)
         
@@ -123,14 +139,18 @@ class GameViewController: UIViewController {
         let angle = acos(GLKVector3DotProduct(up, glDir))
         if angle == Float(M_PI) {
             let orientation = GLKQuaternionMakeWithAngleAndVector3Axis(Float(M_PI), GLKVector3Make(1, 0, 0))
-            point.orientation = SCNQuaternion(orientation.x, orientation.y, orientation.z, orientation.w)
+            node.orientation = SCNQuaternion(orientation.x, orientation.y, orientation.z, orientation.w)
         }
         else if angle > 0 {
             let cross = GLKVector3CrossProduct(up, glDir)
             let orientation = GLKQuaternionMakeWithAngleAndVector3Axis(angle, cross)
-            point.orientation = SCNQuaternion(orientation.x, orientation.y, orientation.z, orientation.w)
+            node.orientation = SCNQuaternion(orientation.x, orientation.y, orientation.z, orientation.w)
         }
-        line.orientation = point.orientation
+        return node
+    }
+    
+    func length(vector : SCNVector3) -> Float {
+        return sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
     }
     
     func handleMotion(motion: CMDeviceMotion?, error: NSError?)
@@ -148,12 +168,35 @@ class GameViewController: UIViewController {
             
             let userAccel = motion!.userAcceleration
             let accel = GLKVector3Make(Float(userAccel.x), Float(userAccel.y), Float(userAccel.z))
-            let worldAccel = GLKQuaternionRotateVector3(product, accel)
-            xAccel.scale = SCNVector3(worldAccel.x, 1, 1)
-            yAccel.scale = SCNVector3(1, worldAccel.y, 1)
-            zAccel.scale = SCNVector3(1, 1, worldAccel.z)
+            let worldAccel = SCNVector3FromGLKVector3(GLKQuaternionRotateVector3(product, accel))
+            xAccel.scale.y = worldAccel.x
+            yAccel.scale.y = worldAccel.y
+            zAccel.scale.y = worldAccel.z
+            let total = constructArrow(worldAccel)
+            total.scale.y = length(worldAccel)
+            accels.replaceChildNode(accelTotal, with: total)
+            accelTotal = total
+            
+            let now = NSDate()
+            let elapsed = Float(now.timeIntervalSinceDate(lastTime))
+            lastTime = now
+            
+            velocity.x += worldAccel.x * elapsed
+            velocity.y += worldAccel.y * elapsed
+            velocity.z += worldAccel.z * elapsed
+            let speed = sqrt(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z)
+            if speed != 0 {
+                let newVelocity = constructArrow(SCNVector3(velocity.x / speed, velocity.y / speed, velocity.z / speed))
+                
+                newVelocity.scale.y = speed
+                if velocities.childNodes.count > 0 {
+                    velocities.childNodes[0].removeFromParentNode()
+                }
+                velocities.addChildNode(newVelocity)
+            }
             
             accels.position = accelsTarget.convertPosition(SCNVector3(0,0,0), toNode: unworldNode.parentNode!)
+            velocities.position = accels.position
         }
     }
     
