@@ -24,7 +24,7 @@ class GameViewController: UIViewController {
     let gravity = SCNNode()
     let accelsTarget = SCNNode()
     
-    let velocities = SCNNode()
+    var velocityArrow = SCNNode()
     var location = SCNNode();
     var position = SCNVector3(0,0,0)
     var velocity = SCNVector3(0,0,0)
@@ -84,7 +84,7 @@ class GameViewController: UIViewController {
         let compass = compassScene.rootNode.childNodeWithName("compass", recursively: true)!
         scene.rootNode.addChildNode(compass)
         
-        scene.rootNode.addChildNode(velocities)
+        scene.rootNode.addChildNode(velocityArrow)
         scene.rootNode.addChildNode(location)
         
         // retrieve the SCNView
@@ -146,6 +146,7 @@ class GameViewController: UIViewController {
             let orientation = GLKQuaternionMakeWithAngleAndVector3Axis(angle, cross)
             node.orientation = SCNQuaternion(orientation.x, orientation.y, orientation.z, orientation.w)
         }
+        node.scale.y = length(direction)
         return node
     }
     
@@ -191,31 +192,23 @@ class GameViewController: UIViewController {
             accels.replaceChildNode(accelTotal, with: total)
             accelTotal = total
             
+            accels.position = accelsTarget.convertPosition(SCNVector3(0,0,0), toNode: unworldNode.parentNode!)
+            
             let now = NSDate()
             let elapsed = Float(now.timeIntervalSinceDate(lastTime))
             lastTime = now
             
             velocity = add(velocity, multiply(worldAccel, by: elapsed))
-            let speed = length(velocity)
-            if speed != 0 {
-                let newVelocity = constructArrow(multiply(velocity, by: 1 / speed))
-                
-                newVelocity.scale.y = speed
-                if velocities.childNodes.count > 0 {
-                    velocities.childNodes[0].removeFromParentNode()
-                }
-                velocities.addChildNode(newVelocity)
-            }
+            let newVelocity = constructArrow(velocity)
+            newVelocity.position = accels.position
+            velocityArrow.parentNode?.replaceChildNode(velocityArrow, with: newVelocity)
+            velocityArrow = newVelocity
             
-            accels.position = accelsTarget.convertPosition(SCNVector3(0,0,0), toNode: unworldNode.parentNode!)
-            velocities.position = accels.position
             position = add(position, multiply(velocity, by: elapsed))
             let step = constructArrow(position)
-            step.scale.y = length(position)
-            let root = location.parentNode
-            location.removeFromParentNode()
-            root?.addChildNode(step)
-            location = step        }
+            location.parentNode?.replaceChildNode(location, with: step)
+            location = step
+        }
     }
     
     func handleTap(gestureRecognize: UIGestureRecognizer) {
