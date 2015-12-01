@@ -25,8 +25,8 @@ class GameViewController: UIViewController {
     let accelsTarget = SCNNode()
     
     let velocities = SCNNode()
-    let path = SCNNode();
-    let position = SCNVector3(0,0,0)
+    var location = SCNNode();
+    var position = SCNVector3(0,0,0)
     var velocity = SCNVector3(0,0,0)
     var lastTime = NSDate()
 
@@ -85,7 +85,7 @@ class GameViewController: UIViewController {
         scene.rootNode.addChildNode(compass)
         
         scene.rootNode.addChildNode(velocities)
-        scene.rootNode.addChildNode(path)
+        scene.rootNode.addChildNode(location)
         
         // retrieve the SCNView
         let scnView = self.view as! SCNView
@@ -153,6 +153,18 @@ class GameViewController: UIViewController {
         return sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
     }
     
+    func multiply(vector : SCNVector3, by scale: Float) -> SCNVector3 {
+        return SCNVector3Make(vector.x * scale, vector.y * scale, vector.z * scale)
+    }
+    
+    func add(a : SCNVector3,_ b : SCNVector3) -> SCNVector3 {
+        return SCNVector3Make(a.x + b.x, a.y + b.y, a.z + b.z)
+    }
+    
+    func sub(a : SCNVector3, minus b : SCNVector3) -> SCNVector3 {
+        return SCNVector3Make(a.x + b.x, a.y + b.y, a.z + b.z)
+    }
+    
     func handleMotion(motion: CMDeviceMotion?, error: NSError?)
     {
         if let attitude = motion?.attitude {
@@ -169,9 +181,11 @@ class GameViewController: UIViewController {
             let userAccel = motion!.userAcceleration
             let accel = GLKVector3Make(Float(userAccel.x), Float(userAccel.y), Float(userAccel.z))
             let worldAccel = SCNVector3FromGLKVector3(GLKQuaternionRotateVector3(product, accel))
+            
             xAccel.scale.y = worldAccel.x
             yAccel.scale.y = worldAccel.y
             zAccel.scale.y = worldAccel.z
+            
             let total = constructArrow(worldAccel)
             total.scale.y = length(worldAccel)
             accels.replaceChildNode(accelTotal, with: total)
@@ -181,12 +195,10 @@ class GameViewController: UIViewController {
             let elapsed = Float(now.timeIntervalSinceDate(lastTime))
             lastTime = now
             
-            velocity.x += worldAccel.x * elapsed
-            velocity.y += worldAccel.y * elapsed
-            velocity.z += worldAccel.z * elapsed
-            let speed = sqrt(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z)
+            velocity = add(velocity, multiply(worldAccel, by: elapsed))
+            let speed = length(velocity)
             if speed != 0 {
-                let newVelocity = constructArrow(SCNVector3(velocity.x / speed, velocity.y / speed, velocity.z / speed))
+                let newVelocity = constructArrow(multiply(velocity, by: 1 / speed))
                 
                 newVelocity.scale.y = speed
                 if velocities.childNodes.count > 0 {
@@ -197,7 +209,13 @@ class GameViewController: UIViewController {
             
             accels.position = accelsTarget.convertPosition(SCNVector3(0,0,0), toNode: unworldNode.parentNode!)
             velocities.position = accels.position
-        }
+            position = add(position, multiply(velocity, by: elapsed))
+            let step = constructArrow(position)
+            step.scale.y = length(position)
+            let root = location.parentNode
+            location.removeFromParentNode()
+            root?.addChildNode(step)
+            location = step        }
     }
     
     func handleTap(gestureRecognize: UIGestureRecognizer) {
