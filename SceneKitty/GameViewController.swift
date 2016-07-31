@@ -25,7 +25,8 @@ class GameViewController: UIViewController {
     let accelsTarget = SCNNode()
     
     var velocityArrow = SCNNode()
-    var location = SCNNode();
+    var location = SCNNode()
+    var viewDir = SCNNode()
     var position = SCNVector3(0,0,0)
     var velocity = SCNVector3(0,0,0)
     var lastTime = NSDate()
@@ -86,6 +87,8 @@ class GameViewController: UIViewController {
         
         scene.rootNode.addChildNode(velocityArrow)
         scene.rootNode.addChildNode(location)
+        scene.rootNode.addChildNode(viewDir)
+
         
         // retrieve the SCNView
         let scnView = self.view as! SCNView
@@ -103,7 +106,7 @@ class GameViewController: UIViewController {
         scnView.backgroundColor = UIColor.blackColor()
         
         // add a tap gesture recognizer
-        let tapGesture = UITapGestureRecognizer(target: self, action: "handleTap:")
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(GameViewController.handleTap(_:)))
         scnView.addGestureRecognizer(tapGesture)
         
         lastTime = NSDate()
@@ -178,7 +181,7 @@ class GameViewController: UIViewController {
             let yUp = GLKQuaternionMakeWithAngleAndAxis(-Float(M_PI_2), 1, 0, 0)
             let product = GLKQuaternionMultiply(yUp, orientation)
             unworldNode.orientation = SCNQuaternion(product.x, product.y, product.z, product.w)
-            
+
             let userAccel = motion!.userAcceleration
             let accel = GLKVector3Make(Float(userAccel.x), Float(userAccel.y), Float(userAccel.z))
             let worldAccel = SCNVector3FromGLKVector3(GLKQuaternionRotateVector3(product, accel))
@@ -193,7 +196,7 @@ class GameViewController: UIViewController {
             accelTotal = total
             
             accels.position = accelsTarget.convertPosition(SCNVector3(0,0,0), toNode: unworldNode.parentNode!)
-            
+
             let now = NSDate()
             let elapsed = Float(now.timeIntervalSinceDate(lastTime))
             lastTime = now
@@ -208,6 +211,14 @@ class GameViewController: UIViewController {
             let step = constructArrow(position)
             location.parentNode?.replaceChildNode(location, with: step)
             location = step
+            
+            let dir = GLKVector3Make(0, 0, -1)
+            let worldDir = SCNVector3FromGLKVector3(GLKQuaternionRotateVector3(product, dir))
+            
+            let view = constructArrow(worldDir)
+            view.position = accels.position
+            viewDir.parentNode?.replaceChildNode(viewDir, with: view)
+            viewDir = view
         }
     }
     
