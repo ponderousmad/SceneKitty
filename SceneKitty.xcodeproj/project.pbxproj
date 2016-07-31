@@ -196,6 +196,7 @@
 				TargetAttributes = {
 					78C04DFB1C037CCF00A2A328 = {
 						CreatedOnToolsVersion = 7.1;
+						DevelopmentTeam = PS9SGNSKFE;
 					};
 					78C04E111C037CCF00A2A328 = {
 						CreatedOnToolsVersion = 7.1;
@@ -403,10 +404,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				INFOPLIST_FILE = SceneKitty/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ponderousmad.SceneKitty;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
 			};
 			name = Debug;
 		};
@@ -414,10 +418,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				INFOPLIST_FILE = SceneKitty/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ponderousmad.SceneKitty;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
 			};
 			name = Release;
 		};
@@ -490,6 +497,7 @@
 				78C04E281C037CCF00A2A328 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		78C04E291C037CCF00A2A328 /* Build configuration list for PBXNativeTarget "SceneKittyTests" */ = {
 			isa = XCConfigurationList;
@@ -498,6 +506,7 @@
 				78C04E2B1C037CCF00A2A328 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		78C04E2C1C037CCF00A2A328 /* Build configuration list for PBXNativeTarget "SceneKittyUITests" */ = {
 			isa = XCConfigurationList;
@@ -506,6 +515,7 @@
 				78C04E2E1C037CCF00A2A328 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
